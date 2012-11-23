@@ -179,8 +179,8 @@ void loop() {
   // if it is, the buttonState is HIGH:
   if (buttonState == HIGH) {    
     digitalWrite(ledPin, HIGH);  
-    play(4);
-    toneNum = (toneNum+1)%4;
+    play(toneNum);
+    toneNum = (toneNum+1)%5;
   } else {
     // turn LED off:
     digitalWrite(ledPin, LOW);
