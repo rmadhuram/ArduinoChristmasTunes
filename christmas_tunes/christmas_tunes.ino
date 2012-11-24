@@ -33,7 +33,7 @@ int jingleBellsDurations[] = { 4, 4, 8, 4, 4, 8, 4, 4, 4, 4, 16,
 
 int firstNoel[] = { N_E4, N_D4, N_C4, N_D4, N_E4, N_F4, N_G4, N_A4, N_B4, N_C5, N_B4, N_A4,
                     N_G4, N_A4, N_B4, N_C5, N_B4, N_A4, N_G4, N_A4, N_B4, N_C5, N_G4, N_F4,
-                    N_E4, N_E4, N_D4, N_D4, N_D4, N_E4, N_F4, N_G4, N_A4, N_B4, N_C5, N_B4, N_A4,
+                    N_E4, N_E4, N_D4, N_C4, N_D4, N_E4, N_F4, N_G4, N_A4, N_B4, N_C5, N_B4, N_A4,
                     N_G4, N_A4, N_B4, N_C5, N_B4, N_A4, N_G4, N_A4, N_B4, N_C5, N_G4, N_F4,
                     N_E4, N_E4, N_D4, N_C4, N_D4, N_E4, N_F4, N_G4, N_C5, N_B4, N_A4, N_A4,
                     N_G4, N_C5, N_B4, N_A4, N_G4, N_A4, N_B4, N_C5, N_G4, N_F4, N_E4
@@ -106,6 +106,8 @@ const int buttonPin = 2;     // the number of the pushbutton pin
 int buttonState = 0;
 int toneNum = 0;  
 int randomOffset = 0;
+int outputStartPin = 3;
+int continuousMode = 0;
 
 void play(int tuneNum) {
   
@@ -134,21 +136,76 @@ void play(int tuneNum) {
     // to distinguish the notes, set a minimum time between them.
     // the note's duration + 30% seems to work well:
     int pauseBetweenNotes = noteDuration * 0.30;    
-    delay(pauseBetweenNotes);
-    
+    delay(pauseBetweenNotes);    
     
     noTone(8);
      
   }  
 }
 
+void lightSweep(int k, int nBits) {
+  for (int i=0; i<5; i++) {
+    lightsUp(k);
+    delay(50);
+    k = k<<1;
+    blankLights();
+    delay(20);
+  }
+  
+  k = k>>nBits;
+  
+  for (int i=0; i<5; i++) {
+    lightsUp(k);
+    delay(50);
+    k = k>>1;
+    blankLights();
+    delay(20);
+  }  
+}
+
+void fromCenter() {
+  for (int i=0; i<2; i++) {
+    lightsUp(4);
+    delay(50);
+    blankLights();
+    delay(50);
+  }
+  
+  for (int i=0; i<4; i++) {
+    lightsUp(10);
+    delay(50);
+    blankLights();
+    delay(50);
+  }
+  
+  lightsUp(31);
+  delay(100);
+  blankLights();
+}
+
+void lightEffect(int n) {
+  switch(n) {
+     case 0: for (int i=0; i<2; i++) { lightSweep(1, 1); }
+             break;        
+             
+     case 1: for (int i=0; i<2; i++) { lightSweep(7, 2); }
+             break;        
+          
+     case 2: for (int i=0; i<2; i++) { lightSweep(5, 2); }
+             break;   
+             
+     case 3: for (int i=0; i<2; i++) { fromCenter(); }
+             break;               
+  }
+}
+
 void lightsUp(int n) {
   int i = 0;
   while (n>0 && i<5) {
     if (n%2 == 1) {
-      digitalWrite(3+i, HIGH);            
+      digitalWrite(outputStartPin+i, HIGH);            
     } else {
-      digitalWrite(3+i, LOW);
+      digitalWrite(outputStartPin+i, LOW);
     }
     n = n>>1; 
     i++;
@@ -157,7 +214,7 @@ void lightsUp(int n) {
 
 void blankLights() {
   for (int i=0; i<5; i++) {
-    digitalWrite(i+3, LOW); 
+    digitalWrite(i+outputStartPin, LOW); 
   }
 }
 
@@ -206,21 +263,35 @@ void setup() {
   pinMode(buttonPin, INPUT);     
   
   for (int i=0; i<5; i++) {
-     pinMode(3 + i, OUTPUT);
+     pinMode(outputStartPin + i, OUTPUT);
   } 
   
 }
 
+void playTune() {
+  int effectNum = random(4);
+  lightEffect(effectNum);
+  play(toneNum);
+  toneNum = (toneNum+1)%5;
+  lightEffect(effectNum);  
+}
+
 void loop() {
   
-  // read the state of the pushbutton value:
-  buttonState = digitalRead(buttonPin);
+  if (continuousMode) {
+    playTune();
+    delay(2000);
+    
+  } else {
+  
+    // read the state of the pushbutton value:
+    buttonState = digitalRead(buttonPin);
 
-  // check if the pushbutton is pressed.
-  // if it is, the buttonState is HIGH:
-  if (buttonState == HIGH) {    
-    play(toneNum);
-    toneNum = (toneNum+1)%5;
+    // check if the pushbutton is pressed.
+    // if it is, the buttonState is HIGH:
+    if (buttonState == HIGH) {    
+      playTune();
+    }
   } 
 
 }
