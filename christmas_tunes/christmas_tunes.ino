@@ -13,6 +13,7 @@ typedef struct {
    int *durations;
    int numCount;
    int tempo;
+   int low, high;
 } tune;
 
 tune tunes[5];
@@ -100,18 +101,16 @@ int whatChildDurations[] = { 2, 4, 2, 3, 1, 2, 4, 2, 3, 1, 2, 4, 2, 3, 1, 2, 6, 
                              4, 2, 3, 1, 2, 4, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 6, 4, 2,
                              6, 3, 1, 2, 4, 2, 3, 1, 2, 4, 2, 3, 1, 2, 4, 2, 4, 2,
                              6, 3, 1, 2, 4, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 6, 4};
-
-int test[] = { N_C4, N_D4, N_E4, N_F4, N_G4, N_A4, N_B4, N_C5};
-
-int testDurations[] = { 4, 4, 4, 4, 4, 4, 4, 4 };
   
 const int buttonPin = 2;     // the number of the pushbutton pin
-const int ledPin =  13;      // the number of the LED 
 int buttonState = 0;
 int toneNum = 0;  
+int randomOffset = 0;
 
 void play(int tuneNum) {
   
+  randomOffset = random(32);
+    
   int numNotes = tunes[tuneNum].numCount;
   int tempo = tunes[tuneNum].tempo;
   for (int thisNote = 0; thisNote < numNotes; thisNote++) {
@@ -120,23 +119,51 @@ void play(int tuneNum) {
     int noteDuration = tempo*tunes[tuneNum].durations[thisNote];
     
     if (freq > 0) {
-       tone(8, freq,noteDuration);
+       int n = (map(freq, tunes[tuneNum].low, tunes[tuneNum].high, 1, 31) + randomOffset)%31 + 1; 
+       lightsUp(n);
+       tone(8, freq, noteDuration);
+       
     } else {
        // REST
        delay(noteDuration);
     }
 
+    delay(noteDuration);
+    blankLights();
+    
     // to distinguish the notes, set a minimum time between them.
     // the note's duration + 30% seems to work well:
-    int pauseBetweenNotes = noteDuration * 1.30;
+    int pauseBetweenNotes = noteDuration * 0.30;    
     delay(pauseBetweenNotes);
+    
     
     noTone(8);
      
   }  
 }
 
+void lightsUp(int n) {
+  int i = 0;
+  while (n>0 && i<5) {
+    if (n%2 == 1) {
+      digitalWrite(3+i, HIGH);            
+    } else {
+      digitalWrite(3+i, LOW);
+    }
+    n = n>>1; 
+    i++;
+  }
+}
+
+void blankLights() {
+  for (int i=0; i<5; i++) {
+    digitalWrite(i+3, LOW); 
+  }
+}
+
 void setup() {
+  
+  int numTunes = 5;
   
   tunes[0].melody = jingleBells;
   tunes[0].durations = jingleBellsDurations;
@@ -163,10 +190,24 @@ void setup() {
   tunes[4].numCount = sizeof(whatChild)/sizeof(int);      
   tunes[4].tempo = 100;  
   
-  // initialize the LED pin as an output:
-  pinMode(ledPin, OUTPUT);      
+  for (int i=0; i<numTunes; i++) {
+    int low = N_DS8;
+    int high = 0;
+    for (int j=0; j<tunes[i].numCount; j++) {
+      int freq = tunes[i].melody[j];
+      if (freq != 0 && freq<low) low = freq;
+      if (freq>high) high = freq;
+    }
+    tunes[i].high = high;
+    tunes[i].low = low;
+  }
+   
   // initialize the pushbutton pin as an input:
   pinMode(buttonPin, INPUT);     
+  
+  for (int i=0; i<5; i++) {
+     pinMode(3 + i, OUTPUT);
+  } 
   
 }
 
@@ -178,12 +219,8 @@ void loop() {
   // check if the pushbutton is pressed.
   // if it is, the buttonState is HIGH:
   if (buttonState == HIGH) {    
-    digitalWrite(ledPin, HIGH);  
     play(toneNum);
     toneNum = (toneNum+1)%5;
-  } else {
-    // turn LED off:
-    digitalWrite(ledPin, LOW);
   } 
 
 }
